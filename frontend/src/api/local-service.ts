@@ -1,5 +1,7 @@
 import { MODULE_BY_KEY } from '@/data/modules'
 import { allRows, listRows, resetRows, saveRows } from '@/data/local-store'
+import { isAbnormal, isPending } from '@/data/evaporation-domain'
+import { evapSummary, listEvap } from '@/api/evaporation-service'
 import type { ActionResult, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
 
 // 会写进数据的「往回走」动作：命中就把这条记录标成异常态，看板上能一眼看出来。
@@ -86,7 +88,18 @@ export function downloadEntries(key: string): void {
 
 export function loadOverview(): OverviewResult {
   const rows = allRows()
+  const evapRows = listEvap()
   const modules = [...MODULE_BY_KEY.values()].map((meta) => {
+    if (meta.key === 'evaporation') {
+      // 蒸发走专属判定：与列表、异常面板同源取数，不再看通用标记位。
+      const summary = evapSummary()
+      return {
+        name: meta.name,
+        created: evapRows.length,
+        pending: evapRows.filter(isPending).length,
+        abnormal: summary.abnormal,
+      }
+    }
     const entries = rows[meta.key] ?? []
     return {
       name: meta.name,
